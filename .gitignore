@@ -1,0 +1,17 @@
+# Deno
+/.deno/
+/deno.lock
+
+# Environment variables
+.env
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
