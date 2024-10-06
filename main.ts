@@ -12,7 +12,8 @@ const EVERYPAY_USERNAME = env.EVERYPAY_USERNAME;
 const EVERYPAY_SECRET = env.EVERYPAY_SECRET;
 const EVERYPAY_ACCOUNT = env.EVERYPAY_ACCOUNT;
 const BACKEND_APP_URL = env.BACKEND_APP_URL;
-const FRONTEND_APP_URL = env.FRONTEND_APP_URL;
+const ALLOWED_ORIGINS = env.ALLOWED_ORIGINS?.split(",").map(origin => origin.trim()) || [];
+const ENVIRONMENT = env.ENVIRONMENT || "development";
 
 const getAuthHeader = () =>
   `Basic ${encodeBase64(`${EVERYPAY_USERNAME}:${EVERYPAY_SECRET}`)}`;
@@ -137,13 +138,23 @@ router.post("/webhook", async (ctx) => {
 });
 
 app.use(async (ctx, next) => {
-  ctx.response.headers.set("Access-Control-Allow-Origin", FRONTEND_APP_URL);
+  const origin = ctx.request.headers.get("Origin") || "";
+  let allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+
+  if (ENVIRONMENT === "development" && !ALLOWED_ORIGINS.includes(origin)) {
+    console.warn(`Allowing origin ${origin} in development mode.`);
+    allowedOrigin = origin;
+  }
+
+  ctx.response.headers.set("Access-Control-Allow-Origin", allowedOrigin);
   ctx.response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   ctx.response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+
   if (ctx.request.method === "OPTIONS") {
-    ctx.response.status = 200;
+    ctx.response.status = 204;
     return;
   }
+
   await next();
 });
 
