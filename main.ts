@@ -1,19 +1,21 @@
 import { Application, Router } from "https://deno.land/x/oak@v17.0.0/mod.ts";
-import { config } from "https://deno.land/x/dotenv@v3.2.2/mod.ts";
+import { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
 import { encodeBase64 } from "@std/encoding";
 import { crypto } from "@std/crypto";
 
-const env = config();
+await load({ export: true });
+
 const app = new Application();
 const router = new Router();
 
-const EVERYPAY_API_URL = env.EVERYPAY_API_URL;
-const EVERYPAY_USERNAME = env.EVERYPAY_USERNAME;
-const EVERYPAY_SECRET = env.EVERYPAY_SECRET;
-const EVERYPAY_ACCOUNT = env.EVERYPAY_ACCOUNT;
-const BACKEND_APP_URL = env.BACKEND_APP_URL;
-const ALLOWED_ORIGINS = env.ALLOWED_ORIGINS?.split(",").map(origin => origin.trim()) || [];
-const ENVIRONMENT = env.ENVIRONMENT || "development";
+const EVERYPAY_API_URL = Deno.env.get("EVERYPAY_API_URL");
+const EVERYPAY_USERNAME = Deno.env.get("EVERYPAY_USERNAME");
+const EVERYPAY_SECRET = Deno.env.get("EVERYPAY_SECRET");
+const EVERYPAY_ACCOUNT = Deno.env.get("EVERYPAY_ACCOUNT");
+const BACKEND_APP_URL = Deno.env.get("BACKEND_APP_URL");
+const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",").map(origin => origin.trim()) || [];
+const ENVIRONMENT = Deno.env.get("ENVIRONMENT") || "development";
+const EVERYPAY_SHARED_KEY = Deno.env.get("EVERYPAY_SHARED_KEY");
 
 const getAuthHeader = () =>
   `Basic ${encodeBase64(`${EVERYPAY_USERNAME}:${EVERYPAY_SECRET}`)}`;
@@ -21,8 +23,6 @@ const getAuthHeader = () =>
 const generateNonce = () => crypto.randomUUID();
 
 router.post("/initiate-payment", async (ctx) => {
-  console.log('initiate-payment');
-
   const { amount, order_reference, email } = await ctx.request.body.json();
 
   try {
@@ -118,7 +118,7 @@ router.post("/webhook", async (ctx) => {
 
   const computedSignature = await crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(body + env.EVERYPAY_SHARED_KEY)
+    new TextEncoder().encode(body + EVERYPAY_SHARED_KEY)
   ).then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join(""));
 
   if (computedSignature !== signature) {
@@ -130,8 +130,8 @@ router.post("/webhook", async (ctx) => {
   const event = JSON.parse(body);
 
   if (event.event_name === "status_updated") {
-    // TODO
-    return 1
+    // TODO: Implement status update logic
+    return 1;
   }
 
   ctx.response.status = 200;
@@ -161,6 +161,6 @@ app.use(async (ctx, next) => {
 app.use(router.routes());
 app.use(router.allowedMethods());
 
-const PORT = parseInt(env.PORT || "3000");
-console.log('app runs PORT:', env.PORT);
+const PORT = parseInt(Deno.env.get("PORT") || "3000");
+console.log('app runs PORT:', PORT);
 await app.listen({ port: PORT });
